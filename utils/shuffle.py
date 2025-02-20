@@ -46,11 +46,11 @@ def save_to_new_file(features, labels, output_file_path, feature_columns, label_
     print(f"合并后的特征和标签已保存到 {new_file_name}")
 
 
-file_path = "C:/Users/21636/Desktop/ImmunoBind/data/tcr.tsv"  # 替换为实际的 TSV 文件路径
-feature_columns = ['CDR3', 'Epitope']  # 替换为实际的特征列名
-label_column = 'label'  # 替换为实际的标签列名
-output_file_path = "C:/Users/21636/Desktop/ImmunoBind/data/tcr_with_negatives.tsv"  # 替换为实际的输出文件路径
-negative_ratio = 100  # 负样本数量是正样本数量的倍数
+file_path = 'data/raw/blosum62_encoded.tsv'
+feature_columns = ['CDR3', 'Epitope']
+label_column = 'label'
+output_file_path = 'data/processed/blosum62_encoded_with_negatives.tsv'
+negative_ratio = 2 # 负样本数量是正样本数量的倍数
 
 features, labels = generate_negative_samples(file_path, feature_columns, label_column, negative_ratio)
 
