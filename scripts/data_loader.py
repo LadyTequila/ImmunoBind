@@ -1,37 +1,39 @@
-# data_loader.py
+import json
+import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+import torch
 
-class CustomDataset(Dataset):
-    def __init__(self, data_path, transform=None):
-        # 从文件中加载数据（如：TCR序列、Epitope、结构数据及对应标签）
-        self.data = self.load_data(data_path)
-        self.transform = transform
+class EncodedDataLoader(Dataset):
+    def __init__(self, file_path):
+        # 读取数据文件，这里假设是 TSV 文件
+        self.data = pd.read_csv(file_path, sep='\t')
 
-    def load_data(self, path):
-        # 伪代码：加载数据并返回列表或字典形式的数据样本
-        data_list = []  
-        # 例如：遍历目录、读取 CSV、JSON 或其他格式的数据
-        # data_list.append({"tcr_seq": ..., "epitope": ..., "structure": ..., 
-        #                    "label_seq": ..., "label_res": ..., "label_struct": ...})
-        return data_list
+        # 解析编码后的特征列
+        self.features = []
+        for feature_str in self.data['encoded_feature']:  # 假设特征列名为 'encoded_feature'
+            feature_list = json.loads(feature_str)
+            self.features.append(feature_list)
+
+        # 假设最后一列是标签
+        self.labels = self.data.iloc[:, -1].values
 
     def __len__(self):
-        return len(self.data)
+        return len(self.features)
 
     def __getitem__(self, idx):
-        sample = self.data[idx]
-        if self.transform:
-            sample = self.transform(sample)
-        return sample  # 返回一个样本的字典
+        # 获取特征和标签
+        feature = torch.tensor(self.features[idx], dtype=torch.float32)
+        label = torch.tensor(self.labels[idx], dtype=torch.long)
 
-def get_dataloader(config, mode="train"):
-    # 若有区分训练集和验证集，可在此处根据 mode 加载不同数据
-    dataset = CustomDataset(config.DATA_PATH, transform=custom_transform)
-    dataloader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True)
-    return dataloader
+        return feature, label
 
-# 自定义变换函数（伪代码）
-def custom_transform(sample):
-    # 对 sample 中的 TCR 序列、Epitope 或结构信息进行预处理与编码
-    # 例如：字符串转换为数值张量、归一化等操作
-    return sample
+# 使用示例
+if __name__ == "__main__":
+    file_path = "C:/Users/21636/Desktop/ImmunoBind/data/embedding/bindingdata__neg_ratio_5_bert_encoded.tsv"  # 替换为你的数据文件路径
+    dataset = EncodedDataLoader(file_path)
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+
+    for features, labels in dataloader:
+        print(f"Features shape: {features.shape}")
+        print(f"Labels shape: {labels.shape}")
+

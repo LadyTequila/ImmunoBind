@@ -5,7 +5,7 @@ import os
 from tqdm import tqdm
 
 # 读取 TSV 文件
-file_path = 'data/raw/SearchTable-2024-12-15 09_08_53.829.tsv'
+file_path = "C:/Users/21636/Desktop/ImmunoBind/data/processed/bindingdata_neg_ratio_10.tsv"
 df = pd.read_csv(file_path, sep='\t')
 
 # 获取 CDR3 序列和 epitope 序列
@@ -62,11 +62,11 @@ for col in df.columns:
 
 # 处理文件名，添加后缀
 file_dir, file_name = os.path.split(file_path)
-file_dir = 'data/embedding'
+file_dir = "C:/Users/21636/Desktop/ImmunoBind/data/embedding"
 file_base, file_ext = os.path.splitext(file_name)
 new_file_name = f"{file_base}_bert_encoded{file_ext}"
 output_file_path = os.path.join(file_dir, new_file_name)
 
 # 保存新的 DataFrame 为 TSV 文件
-encoded_df.to_csv(output_file_path, sep="\t", na_rep='nan')
+encoded_df.to_csv(output_file_path, sep="\t", na_rep='nan', index=False)
 print(f"编码后的文件已保存到 {output_file_path}")
