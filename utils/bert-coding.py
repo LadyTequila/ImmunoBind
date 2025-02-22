@@ -5,7 +5,11 @@ import os
 from tqdm import tqdm
 
 # 读取 TSV 文件
-file_path = 'data/raw/SearchTable-2024-12-15 09_08_53.829.tsv'
+# file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_5.tsv'
+# file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_10.tsv'
+# file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_20.tsv'
+# file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_50.tsv'
+file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_100.tsv'
 df = pd.read_csv(file_path, sep='\t')
 
 # 获取 CDR3 序列和 epitope 序列
