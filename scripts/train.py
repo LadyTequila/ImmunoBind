@@ -1,41 +1,59 @@
-# train.py
+import pandas as pd
 import torch
-from config import Config
-from data_loader import get_dataloader
-from models import MultiTaskModel
-from utils import compute_loss, log_metrics, parse_batch, save_model
+from transformers import AutoTokenizer, AutoModel
+import os
+from data_loader import encode_sequences  # 导入函数
+from GAT_model import GAT
+from adj_matrix_generator import full_connected_adj_matrix, similarity_based_adj_matrix, knn_adj_matrix
 
-def train_model(config):
-    # 获取数据加载器（训练数据）
-    dataloader = get_dataloader(config, mode="train")
-    device = config.DEVICE
-    # 初始化模型并移动到设备上
-    model = MultiTaskModel(config).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
-    
-    for epoch in range(config.EPOCHS):
-        model.train()
-        epoch_loss = 0
-        for batch in dataloader:
-            # parse_batch() 解析 batch 数据
-            x_seq, x_epitope, structure_data, labels_seq, labels_res, labels_struct = parse_batch(batch, device)
-            optimizer.zero_grad()
-            # 前向传播
-            seq_pred, res_pred, struct_pred = model(x_seq, x_epitope, structure_data)
-            # 计算各分支损失并加权求和
-            loss = compute_loss(seq_pred, res_pred, struct_pred,
-                                labels_seq, labels_res, labels_struct,
-                                config.LOSS_WEIGHTS)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
-        log_metrics(epoch, epoch_loss)
-        
-        # 每隔一定 epoch 进行验证
-        if epoch % config.VALIDATE_INTERVAL == 0:
-            validate_model(model, config)  # 这里假设有一个验证函数，可调用 evaluate.py 中的方法
 
-    # 保存训练好的模型
-    save_model(model, config.MODEL_SAVE_PATH)
+# 读取 TSV 文件
+file_path = "C:/Users/21636/Desktop/ImmunoBind/data/processed/bindingdata_neg_ratio_1.tsv"
+df = pd.read_csv(file_path, sep='\t')
 
-# 注意：validate_model() 及 parse_batch() 等函数可放在 utils.py 中，或在此处简单实现。
+# 获取 CDR3 序列和 epitope 序列
+cdr3_sequences = df["CDR3"].tolist()
+epitope_sequences = df["Epitope"].tolist()
+
+# 加载 TCR-BERT 和 ProtBERT 模型和 tokenizer
+tcr_tokenizer = AutoTokenizer.from_pretrained("wukevin/tcr-bert")
+tcr_model = AutoModel.from_pretrained("wukevin/tcr-bert")
+
+prot_tokenizer = AutoTokenizer.from_pretrained("Rostlab/prot_bert_bfd")
+prot_model = AutoModel.from_pretrained("Rostlab/prot_bert_bfd")
+
+# 判断是否有 GPU 可用
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+tcr_model.to(device)
+prot_model.to(device)
+
+# 调用 encode_sequences 函数对序列进行编码
+encoded_df = encode_sequences(
+    cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model, prot_tokenizer, prot_model, device, df
+)
+# 从 DataFrame 中提取 CDR3 和 Epitope 编码后的向量
+cdr3_vectors = torch.tensor([vec for vec in encoded_df["CDR3_embedding"]], dtype=torch.float32).to(device)
+epitope_vectors = torch.tensor([vec for vec in encoded_df["Epitope_embedding"]], dtype=torch.float32).to(device)
+
+# 定义 GAT 模型
+nfeat = cdr3_vectors.shape[1]  # 输入特征维度
+nhid = 64  # 隐藏层维度
+nclass = 512  # 输出特征维度（降维后的维度）
+dropout = 0.5
+alpha = 0.2
+nheads = 3
+
+gat_model = GAT(nfeat, nhid, nclass, dropout, alpha, nheads).to(device)
+
+# 假设这里有一个构建邻接矩阵的函数
+# 为了简化，这里省略具体实现
+adj_matrix = similarity_based_adj_matrix(cdr3_vectors)
+
+# 使用 GAT 进行降维
+cdr3_vectors = cdr3_vectors.to(device)
+adj_matrix = adj_matrix.to(device)
+cdr3_reduced = gat_model(cdr3_vectors, adj_matrix)
+
+# 后续可以继续添加位置编码等步骤
+
+print(cdr3_reduced.shape)
