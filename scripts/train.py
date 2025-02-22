@@ -1,41 +1,33 @@
-# train.py
+import pandas as pd
 import torch
-from config import Config
-from data_loader import get_dataloader
-from models import MultiTaskModel
-from utils import compute_loss, log_metrics, parse_batch, save_model
+from transformers import AutoTokenizer, AutoModel
+import os
+from data_loader import encode_sequences  # 导入函数
 
-def train_model(config):
-    # 获取数据加载器（训练数据）
-    dataloader = get_dataloader(config, mode="train")
-    device = config.DEVICE
-    # 初始化模型并移动到设备上
-    model = MultiTaskModel(config).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
-    
-    for epoch in range(config.EPOCHS):
-        model.train()
-        epoch_loss = 0
-        for batch in dataloader:
-            # parse_batch() 解析 batch 数据
-            x_seq, x_epitope, structure_data, labels_seq, labels_res, labels_struct = parse_batch(batch, device)
-            optimizer.zero_grad()
-            # 前向传播
-            seq_pred, res_pred, struct_pred = model(x_seq, x_epitope, structure_data)
-            # 计算各分支损失并加权求和
-            loss = compute_loss(seq_pred, res_pred, struct_pred,
-                                labels_seq, labels_res, labels_struct,
-                                config.LOSS_WEIGHTS)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
-        log_metrics(epoch, epoch_loss)
-        
-        # 每隔一定 epoch 进行验证
-        if epoch % config.VALIDATE_INTERVAL == 0:
-            validate_model(model, config)  # 这里假设有一个验证函数，可调用 evaluate.py 中的方法
+# 读取 TSV 文件
+file_path = "C:/Users/21636/Desktop/ImmunoBind/data/processed/bindingdata_neg_ratio_10.tsv"
+df = pd.read_csv(file_path, sep='\t')
 
-    # 保存训练好的模型
-    save_model(model, config.MODEL_SAVE_PATH)
+# 获取 CDR3 序列和 epitope 序列
+cdr3_sequences = df["CDR3"].tolist()
+epitope_sequences = df["Epitope"].tolist()
 
-# 注意：validate_model() 及 parse_batch() 等函数可放在 utils.py 中，或在此处简单实现。
+# 加载 TCR-BERT 和 ProtBERT 模型和 tokenizer
+tcr_tokenizer = AutoTokenizer.from_pretrained("wukevin/tcr-bert")
+tcr_model = AutoModel.from_pretrained("wukevin/tcr-bert")
+
+prot_tokenizer = AutoTokenizer.from_pretrained("Rostlab/prot_bert_bfd")
+prot_model = AutoModel.from_pretrained("Rostlab/prot_bert_bfd")
+
+# 判断是否有 GPU 可用
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+tcr_model.to(device)
+prot_model.to(device)
+
+# 调用 encode_sequences 函数对序列进行编码
+encoded_df = encode_sequences(
+    cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model, prot_tokenizer, prot_model, device
+)
+
+# 你可以在此之后继续将 encoded_df 传递给模型进行训练
+print(encoded_df.head())
