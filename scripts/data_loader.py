@@ -5,25 +5,6 @@ from tqdm import tqdm
 import os
 
 # 编码序列的函数
-def encode_sequences(cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model, prot_tokenizer, prot_model, device):
-    """
-    对输入的 CDR3 和 Epitope 序列进行编码，返回编码后的嵌入向量的 DataFrame。
-    
-    cdr3_sequences: list，CDR3 序列列表
-    epitope_sequences: list，Epitope 序列列表
-    tcr_tokenizer: TCR-BERT tokenizer
-    tcr_model: TCR-BERT 模型
-    prot_tokenizer: ProtBERT tokenizer
-    prot_model: ProtBERT 模型
-    device: 计算设备（cuda 或 cpu）
-    
-    返回值: DataFrame，其中包含编码后的 CDR3 和 Epitope 嵌入向量
-    """
-    # 初始化列表来存储嵌入向量
-    cdr3_embeddings = []
-    epitope_embeddings = []
-
-    # 编码序列的函数
 def encode_sequences(cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model, prot_tokenizer, prot_model, device, df):
     """
     对输入的 CDR3 和 Epitope 序列进行编码，返回编码后的嵌入向量的 DataFrame。
