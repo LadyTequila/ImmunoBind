@@ -66,7 +66,7 @@ for col in df.columns:
 
 # 处理文件名，添加后缀
 file_dir, file_name = os.path.split(file_path)
-file_dir = "C:/Users/21636/Desktop/ImmunoBind/data/embedding"
+file_dir = "data/embedding"
 file_base, file_ext = os.path.splitext(file_name)
 new_file_name = f"{file_base}_bert_encoded{file_ext}"
 output_file_path = os.path.join(file_dir, new_file_name)
