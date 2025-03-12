@@ -4,7 +4,6 @@ from transformers import AutoTokenizer, AutoModel
 from tqdm import tqdm
 import os
 
-<<<<<<< HEAD:scripts/encode_sequences.py
 # 编码单个序列的函数
 def encode_single_sequence(sequence, tokenizer, model, device):
     try:
@@ -18,8 +17,6 @@ def encode_single_sequence(sequence, tokenizer, model, device):
         print(f"Error encoding sequence: {sequence}, Error: {e}")
         return None
 
-=======
->>>>>>> 7da05d52c55f40b375dd8dbd14196f2d04e9fa33:scripts/data_loader.py
 # 编码序列的函数
 def encode_sequences(cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model, prot_tokenizer, prot_model, device, df):
     """
