@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModel
 import os
-from data_loader import encode_sequences  # 导入函数
+from encode_sequences import encode_sequences  # 导入函数
 from GAT_model import GAT
 from adj_matrix_generator import full_connected_adj_matrix, similarity_based_adj_matrix, knn_adj_matrix
 
