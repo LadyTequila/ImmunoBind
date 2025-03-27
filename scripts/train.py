@@ -68,6 +68,13 @@ optimizer = optim.Adam(
     weight_decay=TRAIN_CONFIG["weight_decay"]
 )
 
+# 初始化学习率调度器
+scheduler = optim.lr_scheduler.CosineAnnealingLR(
+    optimizer,
+    T_max=TRAIN_CONFIG["lr_scheduler"]["T_max"],
+    eta_min=TRAIN_CONFIG["lr_scheduler"]["eta_min"]
+)
+
 # 创建模型保存目录
 os.makedirs(MODEL_DIR, exist_ok=True)
 
@@ -79,9 +86,18 @@ best_val_auc = 0.0
 best_epoch = 0
 patience_counter = 0
 early_stopping_patience = TRAIN_CONFIG.get("early_stopping", 5)
+use_early_stopping = early_stopping_patience > 0
 
 # 训练过程
 print("开始训练...")
+print(f"早停设置: {'启用' if use_early_stopping else '禁用'}")
+if use_early_stopping:
+    print(f"早停耐心值: {early_stopping_patience}")
+print(f"初始学习率: {TRAIN_CONFIG['learning_rate']}")
+print(f"当前学习率: {optimizer.param_groups[0]['lr']:.6f}")
+print(f"批次大小: {TRAIN_CONFIG['batch_size']}")
+print(f"总训练轮数: {TRAIN_CONFIG['num_epochs']}")
+
 num_epochs = TRAIN_CONFIG["num_epochs"]
 for epoch in range(num_epochs):
     epoch_start_time = time.time()
@@ -113,6 +129,14 @@ for epoch in range(num_epochs):
         # 反向传播
         optimizer.zero_grad()
         loss.backward()
+        
+        # 梯度裁剪
+        if TRAIN_CONFIG["grad_clip"]["enabled"]:
+            torch.nn.utils.clip_grad_norm_(
+                model.parameters(), 
+                TRAIN_CONFIG["grad_clip"]["max_norm"]
+            )
+        
         optimizer.step()
 
     avg_train_loss = running_loss / len(train_loader)
@@ -147,6 +171,10 @@ for epoch in range(num_epochs):
     avg_val_loss = val_loss / len(val_loader)
     val_auc = roc_auc_score(total_labels, total_preds)
     
+    # 更新学习率
+    scheduler.step()
+    current_lr = optimizer.param_groups[0]['lr']
+    
     # 计算本轮训练时间
     epoch_time = time.time() - epoch_start_time
     
@@ -154,6 +182,7 @@ for epoch in range(num_epochs):
     log_message = f"Epoch {epoch+1}/{num_epochs} | "
     log_message += f"Train Loss: {avg_train_loss:.4f} | Train AUC: {train_auc:.4f} | "
     log_message += f"Val Loss: {avg_val_loss:.4f} | Val AUC: {val_auc:.4f} | "
+    log_message += f"LR: {current_lr:.6f} | "
     log_message += f"Time: {epoch_time:.2f}s"
     print(log_message)
     
@@ -169,10 +198,11 @@ for epoch in range(num_epochs):
         print(f"保存最佳模型到: {best_model_path} (Val AUC: {best_val_auc:.4f})")
     else:
         patience_counter += 1
-        print(f"验证AUC未提升，当前耐心值: {patience_counter}/{early_stopping_patience}")
+        if use_early_stopping:
+            print(f"验证AUC未提升，当前耐心值: {patience_counter}/{early_stopping_patience}")
     
     # 早停检查
-    if patience_counter >= early_stopping_patience:
+    if use_early_stopping and patience_counter >= early_stopping_patience:
         print(f"早停触发！验证AUC已连续 {early_stopping_patience} 轮未提升。")
         print(f"最佳验证AUC: {best_val_auc:.4f}，出现在第 {best_epoch} 轮。")
         break

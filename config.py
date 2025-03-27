@@ -28,23 +28,36 @@ PROT_MODEL_NAME = "Rostlab/prot_bert_bfd"
 
 # TEIM模型参数
 TEIM_CONFIG = {
-    "dim_hidden": 128,        # 隐藏层维度
-    "layers_inter": 3,        # 交互层数量
-    "dim_seqlevel": 64,       # 序列级特征维度
+    "dim_hidden": 256,        # 隐藏层维度，增加到256以提升模型容量
+    "layers_inter": 4,        # 交互层数量，增加到4层以加强特征提取
+    "dim_seqlevel": 128,      # 序列级特征维度，增加到128
     "dim_emb_cdr3": 768,      # CDR3嵌入维度
     "dim_emb_epi": 1024,      # Epitope嵌入维度
-    "dropout_rate": 0.2,      # Dropout比率
+    "dropout_rate": 0.2,      # 降低Dropout比率，因为可能过度正则化
 }
 
 # 训练参数
 TRAIN_CONFIG = {
-    "batch_size": 32,         # 批次大小
-    "num_epochs": 10,         # 训练轮数
-    "learning_rate": 1e-4,    # 学习率
-    "weight_decay": 1e-5,     # 权重衰减
+    "batch_size": 512,        # 批次大小
+    "num_epochs": 25,         # 训练轮数
+    "learning_rate": 2e-4,    # 学习率
+    "weight_decay": 5e-5,     # 权重衰减
     "test_size": 0.2,         # 测试集比例
     "random_seed": 42,        # 随机种子
-    "early_stopping": 5,      # 早停轮数
+    "early_stopping": 10,     # 增加早停耐心值
+    
+    # 学习率调度器参数
+    "lr_scheduler": {
+        "type": "cosine",     # 使用余弦退火调度器
+        "T_max": 25,          # 周期设为总轮数
+        "eta_min": 1e-6,      # 最小学习率
+    },
+    
+    # 梯度裁剪
+    "grad_clip": {
+        "enabled": True,
+        "max_norm": 5.0,      # 增加梯度裁剪阈值
+    },
 }
 
 # 设备配置

@@ -22,6 +22,7 @@ class ResNet(nn.Module):
         return out
 
 # 旋转位置编码实现
+'''
 class RotaryPositionEmbedding(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -58,6 +59,7 @@ class RotaryPositionEmbedding(nn.Module):
             x_rotated = x  # 暂时不应用旋转，只返回原始输入
         
         return x_rotated.type_as(x)
+'''
 
 # 定义 TEIM 模型类
 class TEIM(nn.Module):
@@ -81,9 +83,9 @@ class TEIM(nn.Module):
         self.prot_model = AutoModel.from_pretrained(PROT_MODEL_NAME)
 
         # 定义 CDR3 序列的旋转位置编码模块
-        self.rope_cdr3 = RotaryPositionEmbedding(self.dim_emb_cdr3)
+        # self.rope_cdr3 = RotaryPositionEmbedding(self.dim_emb_cdr3)
         # 定义抗原表位序列的旋转位置编码模块
-        self.rope_epi = RotaryPositionEmbedding(self.dim_emb_epi)
+        # self.rope_epi = RotaryPositionEmbedding(self.dim_emb_epi)
 
         # 定义 CDR3 序列的特征提取模块
         self.seq_cdr3 = nn.Sequential(
@@ -159,6 +161,7 @@ class TEIM(nn.Module):
         epi_emb = epi_emb.transpose(1, 2)
 
         # 应用旋转位置编码
+        '''
         try:
             cdr3_emb_RoPE = self.rope_cdr3(cdr3_emb)
             epi_emb_RoPE = self.rope_epi(epi_emb)
@@ -166,6 +169,10 @@ class TEIM(nn.Module):
             # 如果RoPE失败，直接使用原始嵌入
             cdr3_emb_RoPE = cdr3_emb
             epi_emb_RoPE = epi_emb
+        '''
+        # 直接使用原始嵌入，不应用旋转位置编码
+        cdr3_emb_RoPE = cdr3_emb
+        epi_emb_RoPE = epi_emb
 
         ## sequence features
         cdr3_feat = self.seq_cdr3(cdr3_emb_RoPE)  # batch_size, dim_hidden, seq_len
