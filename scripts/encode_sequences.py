@@ -4,6 +4,19 @@ from transformers import AutoTokenizer, AutoModel
 from tqdm import tqdm
 import os
 
+# 编码单个序列的函数
+def encode_single_sequence(sequence, tokenizer, model, device):
+    try:
+        inputs = tokenizer(sequence, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
+        with torch.no_grad():
+            outputs = model(**inputs)
+        # 获取 [CLS] token 对应的嵌入向量
+        cls_embedding = outputs.last_hidden_state[:, 0, :]
+        return cls_embedding
+    except Exception as e:
+        print(f"Error encoding sequence: {sequence}, Error: {e}")
+        return None
+
 # 编码序列的函数
 def encode_sequences(cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model, prot_tokenizer, prot_model, device, df):
     """
@@ -24,22 +37,14 @@ def encode_sequences(cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model
     cdr3_embeddings = []
     epitope_embeddings = []
 
-    # 编码序列的函数（封装）
-    def encode_sequence(sequence, tokenizer, model):
-        inputs = tokenizer(sequence, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
-        with torch.no_grad():
-            outputs = model(**inputs)
-        # 获取 [CLS] token 对应的嵌入向量
-        cls_embedding = outputs.last_hidden_state[:, 0, :]
-        return cls_embedding
-
     # 使用 tqdm 创建进度条，遍历所有序列并进行编码
-    for cdr3_seq, epitope_seq in tqdm(zip(cdr3_sequences, epitope_sequences), total=len(cdr3_sequences), desc="Encoding CDR3 & Epitope sequences"):
-        cdr3_embedding = encode_sequence(cdr3_seq, tcr_tokenizer, tcr_model)
-        epitope_embedding = encode_sequence(epitope_seq, prot_tokenizer, prot_model)
+    for i, (cdr3_seq, epitope_seq) in enumerate(tqdm(zip(cdr3_sequences, epitope_sequences), total=len(cdr3_sequences), desc="Encoding CDR3 & Epitope sequences")):
+        cdr3_embedding = encode_single_sequence(cdr3_seq, tcr_tokenizer, tcr_model, device)
+        epitope_embedding = encode_single_sequence(epitope_seq, prot_tokenizer, prot_model, device)
 
-        cdr3_embeddings.append(cdr3_embedding)
-        epitope_embeddings.append(epitope_embedding)
+        if cdr3_embedding is not None and epitope_embedding is not None:
+            cdr3_embeddings.append(cdr3_embedding)
+            epitope_embeddings.append(epitope_embedding)
 
     # 将嵌入向量转为 NumPy 数组
     cdr3_embeddings_numpy = torch.cat(cdr3_embeddings, dim=0).cpu().numpy()
@@ -57,4 +62,3 @@ def encode_sequences(cdr3_sequences, epitope_sequences, tcr_tokenizer, tcr_model
             encoded_df[col] = df[col]
 
     return encoded_df
-
