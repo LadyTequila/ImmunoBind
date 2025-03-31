@@ -39,7 +39,7 @@ TEIM_CONFIG = {
 # 训练参数
 TRAIN_CONFIG = {
     "batch_size": 512,        # 批次大小
-    "num_epochs": 25,         # 训练轮数
+    "num_epochs": 10,         # 训练轮数
     "learning_rate": 2e-4,    # 学习率
     "weight_decay": 5e-5,     # 权重衰减
     "test_size": 0.2,         # 测试集比例
