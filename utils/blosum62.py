@@ -1,7 +1,7 @@
 import pandas as pd
 from Bio.SubsMat import MatrixInfo
 
-df = pd.read_csv('data/SearchTable-2024-12-15 09_08_53.829.tsv', sep='\t')
+df = pd.read_csv('data/raw/SearchTable-2024-12-15 09_08_53.829.tsv', sep='\t')
 
 blosum62 = MatrixInfo.blosum62
 
@@ -16,4 +16,4 @@ df['Blosum_Score'] = df.apply(lambda row: calculate_blosum_score(row['CDR3'], ro
 
 #print(df)
 
-df.to_csv('data/blosum62_encoded.tsv', sep='\t', index=False)
+df.to_csv('data/raw/blosum62_encoded.tsv', sep='\t', index=False)

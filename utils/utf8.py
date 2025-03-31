@@ -39,8 +39,8 @@ def convert_to_utf8_and_delete_columns(input_file, output_file, columns_to_delet
     except Exception as e:
         print(f"文件转换过程中出现错误: {e}")
 
-input_file = "C:/Users/21636/Desktop/ImmunoBind/data/raw/SearchTable-2024-12-15 09_08_53.829.tsv"  # 输入文件路径
-output_file = "C:/Users/21636/Desktop/ImmunoBind/data/processed/tcr.tsv"  # 输出文件路径
+input_file = "data/raw/SearchTable-2024-12-15 09_08_53.829.tsv"  # 输入文件路径
+output_file = "data/processed/tcr.tsv"  # 输出文件路径
 columns_to_delete = ['V', 'J','MHC A','MHC B']
 
 convert_to_utf8_and_delete_columns(input_file, output_file, columns_to_delete)

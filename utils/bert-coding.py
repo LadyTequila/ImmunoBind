@@ -9,7 +9,7 @@ from tqdm import tqdm
 # file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_10.tsv'
 # file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_20.tsv'
 # file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_50.tsv'
-file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_100.tsv'
+file_path = 'data/processed/blosum62_encoded_with_negatives_neg_ratio_1.tsv'
 df = pd.read_csv(file_path, sep='\t')
 
 # 获取 CDR3 序列和 epitope 序列

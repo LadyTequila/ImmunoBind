@@ -21,46 +21,6 @@ class ResNet(nn.Module):
         out = tmp_data + data
         return out
 
-# 旋转位置编码实现
-'''
-class RotaryPositionEmbedding(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.dim = dim
-
-    def forward(self, x):
-        # 确保最后一个维度是偶数
-        if x.shape[-1] % 2 != 0:
-            # 如果不是偶数，添加一个零列使其成为偶数
-            pad = torch.zeros(*x.shape[:-1], 1, device=x.device, dtype=x.dtype)
-            x = torch.cat([x, pad], dim=-1)
-        
-        seq_len = x.shape[2]
-        # 确保dim是偶数
-        dim = self.dim if self.dim % 2 == 0 else self.dim - 1
-        
-        # 生成频率
-        freqs = 10000 ** (-2 * torch.arange(0, dim // 2, device=x.device, dtype=torch.float32) / dim)
-        position = torch.arange(seq_len, device=x.device, dtype=torch.float32)
-        freqs = torch.einsum('i,j->ij', position, freqs)
-        
-        # 确保freqs的形状与x兼容
-        emb = torch.cat((freqs, freqs), dim=-1)
-        
-        # 使用更安全的方式重塑张量
-        try:
-            # 尝试使用view_as_complex
-            x_reshaped = x.float().reshape(*x.shape[:-1], -1, 2)
-            x_complex = torch.view_as_complex(x_reshaped)
-            emb_complex = torch.polar(torch.ones_like(x_complex), emb.to(x.device))
-            x_rotated = torch.view_as_real(x_complex * emb_complex).flatten(-2)
-        except RuntimeError as e:
-            # 如果失败，使用替代方法
-            x_rotated = x  # 暂时不应用旋转，只返回原始输入
-        
-        return x_rotated.type_as(x)
-'''
-
 # 定义 TEIM 模型类
 class TEIM(nn.Module):
     def __init__(self, file_path=None):
@@ -117,16 +77,6 @@ class TEIM(nn.Module):
         )
 
     def forward(self, cdr3_sequences, epitope_sequences):
-        """
-        前向传播方法，接受CDR3和Epitope序列作为输入
-        
-        参数:
-        cdr3_sequences: 批次的CDR3序列
-        epitope_sequences: 批次的Epitope序列
-        
-        返回:
-        包含序列级预测和交互映射的字典
-        """
         device = next(self.parameters()).device  # 获取模型所在设备
         
         # 编码CDR3序列
@@ -160,16 +110,6 @@ class TEIM(nn.Module):
         epi_emb = epi_emb.unsqueeze(1)
         epi_emb = epi_emb.transpose(1, 2)
 
-        # 应用旋转位置编码
-        '''
-        try:
-            cdr3_emb_RoPE = self.rope_cdr3(cdr3_emb)
-            epi_emb_RoPE = self.rope_epi(epi_emb)
-        except Exception:
-            # 如果RoPE失败，直接使用原始嵌入
-            cdr3_emb_RoPE = cdr3_emb
-            epi_emb_RoPE = epi_emb
-        '''
         # 直接使用原始嵌入，不应用旋转位置编码
         cdr3_emb_RoPE = cdr3_emb
         epi_emb_RoPE = epi_emb
@@ -196,5 +136,5 @@ class TEIM(nn.Module):
 
         return {
             'seqlevel_out': seqlevel_out,
-            'inter_map': inter_map,
+            'inter_map': torch.sigmoid(inter_map),
         }
