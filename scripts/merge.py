@@ -136,30 +136,20 @@ class TEIM(nn.Module):
         """
         device = next(self.parameters()).device  # 获取模型所在设备
         
-        # 编码CDR3序列
+        # 批量编码CDR3序列，而不是逐个处理
         batch_size = len(cdr3_sequences)
-        cdr3_embeddings = []
-        for cdr3_seq in cdr3_sequences:
-            inputs = self.tcr_tokenizer(cdr3_seq, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
-            with torch.no_grad():
-                outputs = self.tcr_model(**inputs)
-            # outputs = self.tcr_model(**inputs)
-            cls_embedding = outputs.last_hidden_state[:, 0, :]
-            cdr3_embeddings.append(cls_embedding)
         
-        # 编码Epitope序列
-        epitope_embeddings = []
-        for epitope_seq in epitope_sequences:
-            inputs = self.prot_tokenizer(epitope_seq, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
-            with torch.no_grad():
-                outputs = self.prot_model(**inputs)
-            # outputs = self.prot_model(**inputs)
-            cls_embedding = outputs.last_hidden_state[:, 0, :]
-            epitope_embeddings.append(cls_embedding)
+        # 编码CDR3序列 - 批量处理
+        inputs = self.tcr_tokenizer(cdr3_sequences, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
+        with torch.no_grad():
+            outputs = self.tcr_model(**inputs)
+        cdr3_emb = outputs.last_hidden_state[:, 0, :]  # [batch_size, 768]
         
-        # 将嵌入向量堆叠成批次
-        cdr3_emb = torch.cat(cdr3_embeddings, dim=0)  # [batch_size, 768]
-        epi_emb = torch.cat(epitope_embeddings, dim=0)  # [batch_size, 1024]
+        # 编码Epitope序列 - 批量处理
+        inputs = self.prot_tokenizer(epitope_sequences, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
+        with torch.no_grad():
+            outputs = self.prot_model(**inputs)
+        epi_emb = outputs.last_hidden_state[:, 0, :]  # [batch_size, 1024]
         
         # 先通过线性层转换维度
         cdr3_feat = self.seq_cdr3(cdr3_emb)  # [batch_size, dim_hidden]
@@ -222,7 +212,7 @@ device = DEVICE
 class TEIMDataset(Dataset):
     def __init__(self, file_path, augment=False):
         self.df = pd.read_csv(file_path, sep='\t')
-        print(f"数据集加载完成，共 {len(self.df)} 条记录")
+        print(f"数据集加载完成: 共 {len(self.df)} 条记录")
         
         self.cdr3_sequences = self.df["CDR3"].tolist()
         self.epitope_sequences = self.df["Epitope"].tolist()
@@ -233,7 +223,9 @@ class TEIMDataset(Dataset):
         return len(self.df)
     
     def _augment_sequence(self, seq, p=0.1):
-        """简单的序列增强：随机替换、删除或插入氨基酸"""
+        """
+        简单的序列增强：随机替换、删除或插入氨基酸
+        """
         if not self.augment or random.random() > p:
             return seq
             
@@ -397,7 +389,7 @@ print(f"早停设置: {'启用' if use_early_stopping else '禁用'}")
 if use_early_stopping:
     print(f"早停耐心值: {early_stopping_patience}")
 print(f"初始学习率: {TRAIN_CONFIG['learning_rate']}")
-print(f"当前学习率: {optimizer.param_groups[0]['lr']:.6f}")
+print(f"当前学习率: {optimizer.param_groups[0]['lr']:.10f}")
 print(f"批次大小: {TRAIN_CONFIG['batch_size']}")
 print(f"总训练轮数: {TRAIN_CONFIG['num_epochs']}")
 
@@ -443,7 +435,7 @@ for epoch in range(num_epochs):
             for name, param in model.named_parameters():
                 if param.grad is not None and torch.isnan(param.grad).any():
                     has_nan = True
-                    print(f"警告: 参数 {name} 的梯度包含NaN值")
+                    # print(f"警告: 参数 {name} 的梯度包含NaN值")
             
             # 梯度裁剪和优化器步骤
             if not has_nan:
@@ -457,8 +449,8 @@ for epoch in range(num_epochs):
                 # 更新参数
                 scaler.step(optimizer)
                 scaler.update()
-            else:
-                print("检测到NaN梯度，跳过此批次更新")
+            # else:
+            #     print("检测到NaN梯度，跳过此批次更新")
             
             # 清空梯度
             optimizer.zero_grad()
