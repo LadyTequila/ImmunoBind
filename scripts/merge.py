@@ -1,19 +1,28 @@
+'''
+可能存在梯度消失情况
+'''
+
 import os
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-import torch
-import torch.optim as optim
-import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score
-from tqdm import tqdm
 import pandas as pd
-from model import TEIM
 import sys
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
 import time
-import datetime
-from encode_sequences import encode_sequences  # 导入函数
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer, AutoModel
+from tqdm import tqdm
+
+from model import TEIM
+from encode_sequences import encode_sequences # 导入函数
+
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+'''
+模型
+'''
 
 # 添加项目根目录到系统路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -34,58 +43,101 @@ class ResNet(nn.Module):
 class TEIM(nn.Module):
     def __init__(self, file_path=None):
         super().__init__()
-        # 从配置文件中获取参数
+        
+        # 从配置中获取参数
         self.dim_hidden = TEIM_CONFIG["dim_hidden"]
-        self.layers_inter = TEIM_CONFIG["layers_inter"]
-        self.dim_seqlevel = TEIM_CONFIG["dim_seqlevel"]
-        self.dropout_rate = TEIM_CONFIG.get("dropout_rate", 0.2)  # 使用get方法，如果不存在则使用默认值
+        self.dim_emb_cdr3 = TEIM_CONFIG["dim_emb_cdr3"]
+        self.dim_emb_epi = TEIM_CONFIG["dim_emb_epi"]
+        self.dropout_rate = TEIM_CONFIG["dropout_rate"]
         
-        # 分别定义 CDR3 和 Epitope 的嵌入维度
-        self.dim_emb_cdr3 = TEIM_CONFIG.get("dim_emb_cdr3", 768)  # 使用配置中的值或默认值
-        self.dim_emb_epi = TEIM_CONFIG.get("dim_emb_epi", 1024)   # 使用配置中的值或默认值
-        
-        # 初始化tokenizer和模型
+        # 初始化tokenizer和预训练模型
         self.tcr_tokenizer = AutoTokenizer.from_pretrained(TCR_MODEL_NAME)
         self.tcr_model = AutoModel.from_pretrained(TCR_MODEL_NAME)
-
         self.prot_tokenizer = AutoTokenizer.from_pretrained(PROT_MODEL_NAME)
         self.prot_model = AutoModel.from_pretrained(PROT_MODEL_NAME)
+        
+        # 序列特征提取层
+        self.seq_cdr3 = nn.Linear(self.dim_emb_cdr3, self.dim_hidden)
+        self.seq_epi = nn.Linear(self.dim_emb_epi, self.dim_hidden)
+        
+        # # UNet
+        # self.down1 = nn.Sequential(
+        #     nn.Conv2d(self.dim_hidden, self.dim_hidden*2, 3, padding=1),
+        #     nn.BatchNorm2d(self.dim_hidden*2),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(kernel_size=(1,2))
+        # )
+        
+        # self.down2 = nn.Sequential(
+        #     nn.Conv2d(self.dim_hidden*2, self.dim_hidden*4, 3, padding=1),
+        #     nn.BatchNorm2d(self.dim_hidden*4),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(kernel_size=(1,1))
+        # )
+        
+        # self.bridge = nn.Sequential(
+        #     nn.Conv2d(self.dim_hidden*4, self.dim_hidden*8, 3, padding=1),
+        #     nn.BatchNorm2d(self.dim_hidden*8),
+        #     nn.ReLU()
+        # )
+        
+        # self.up1 = nn.Sequential(
+        #     nn.ConvTranspose2d(self.dim_hidden*8, self.dim_hidden*4, 2, stride=2),
+        #     nn.BatchNorm2d(self.dim_hidden*4),
+        #     nn.ReLU()
+        # )
+        
+        # self.up2 = nn.Sequential(
+        #     nn.ConvTranspose2d(self.dim_hidden*4, self.dim_hidden*2, 2, stride=2),
+        #     nn.BatchNorm2d(self.dim_hidden*2),
+        #     nn.ReLU()
+        # )
+        
+        # self.final = nn.Sequential(
+        #     nn.Conv2d(self.dim_hidden*2, self.dim_hidden, 1),
+        #     nn.BatchNorm2d(self.dim_hidden),
+        #     nn.ReLU()
+        # )
 
-        # 定义 CDR3 序列的旋转位置编码模块
-        # self.rope_cdr3 = RotaryPositionEmbedding(self.dim_emb_cdr3)
-        # 定义抗原表位序列的旋转位置编码模块
-        # self.rope_epi = RotaryPositionEmbedding(self.dim_emb_epi)
+        # # 保持输出层不变
+        # self.seqlevel_outlyer = nn.Sequential(
+        #     nn.AdaptiveMaxPool2d(1),
+        #     nn.Flatten(),
+        #     nn.Dropout(self.dropout_rate),
+        #     nn.Linear(self.dim_hidden, 1),
+        #     # nn.Sigmoid()
+        # )
 
-        # 定义 CDR3 序列的特征提取模块
-        self.seq_cdr3 = nn.Sequential(
-            nn.Conv1d(self.dim_emb_cdr3, self.dim_hidden, 1),
-            nn.BatchNorm1d(self.dim_hidden),
-            nn.ReLU(),
+        # transformer
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=self.dim_hidden, 
+            nhead=4, 
+            dropout=self.dropout_rate,
+            batch_first=True
         )
-        # 定义抗原表位序列的特征提取模块
-        self.seq_epi = nn.Sequential(
-            nn.Conv1d(self.dim_emb_epi, self.dim_hidden, 1),
-            nn.BatchNorm1d(self.dim_hidden),
-            nn.ReLU(),
+        self.transformer_encoder = nn.TransformerEncoder(
+            encoder_layer, 
+            num_layers=4
         )
 
-        self.inter_layers = nn.ModuleList([
-            nn.Sequential(
-                ResNet(nn.Conv2d(self.dim_hidden, self.dim_hidden, kernel_size=3, padding=1)),
-                nn.BatchNorm2d(self.dim_hidden),
-                nn.ReLU(),
-            ) for _ in range(self.layers_inter)
-        ])
-
-        self.seqlevel_outlyer = nn.Sequential(
-            nn.AdaptiveMaxPool2d(1),
-            nn.Flatten(),
-            nn.Dropout(self.dropout_rate),  # 使用配置中的dropout_rate
+        # 分类层
+        self.classifier = nn.Sequential(
+            nn.Dropout(self.dropout_rate),
             nn.Linear(self.dim_hidden, 1),
             nn.Sigmoid()
         )
 
     def forward(self, cdr3_sequences, epitope_sequences):
+        """
+        前向传播方法，接受CDR3和Epitope序列作为输入
+        
+        参数:
+        cdr3_sequences: 批次的CDR3序列
+        epitope_sequences: 批次的Epitope序列
+        
+        返回:
+        包含序列级预测和交互映射的字典
+        """
         device = next(self.parameters()).device  # 获取模型所在设备
         
         # 编码CDR3序列
@@ -95,6 +147,7 @@ class TEIM(nn.Module):
             inputs = self.tcr_tokenizer(cdr3_seq, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
             with torch.no_grad():
                 outputs = self.tcr_model(**inputs)
+            # outputs = self.tcr_model(**inputs)
             cls_embedding = outputs.last_hidden_state[:, 0, :]
             cdr3_embeddings.append(cls_embedding)
         
@@ -104,49 +157,58 @@ class TEIM(nn.Module):
             inputs = self.prot_tokenizer(epitope_seq, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
             with torch.no_grad():
                 outputs = self.prot_model(**inputs)
+            # outputs = self.prot_model(**inputs)
             cls_embedding = outputs.last_hidden_state[:, 0, :]
             epitope_embeddings.append(cls_embedding)
         
         # 将嵌入向量堆叠成批次
-        cdr3_emb = torch.cat(cdr3_embeddings, dim=0)
-        epi_emb = torch.cat(epitope_embeddings, dim=0)
+        cdr3_emb = torch.cat(cdr3_embeddings, dim=0)  # [batch_size, 768]
+        epi_emb = torch.cat(epitope_embeddings, dim=0)  # [batch_size, 1024]
+        
+        # 先通过线性层转换维度
+        cdr3_feat = self.seq_cdr3(cdr3_emb)  # [batch_size, dim_hidden]
+        epi_feat = self.seq_epi(epi_emb)     # [batch_size, dim_hidden]
+        
+        # 计算注意力权重
+        attention_weights = torch.matmul(cdr3_feat, epi_feat.transpose(1, 0))  # [batch_size, batch_size]
+        attention_weights = torch.softmax(attention_weights, dim=-1)
+        
+        # 计算注意力加权的特征
+        attended_features = torch.matmul(attention_weights, epi_feat)  # [batch_size, dim_hidden]
+        
+        # # 将特征转换为适合UNet的形状
+        # combined_features = torch.cat([cdr3_feat, attended_features], dim=1)  # [batch_size, dim_hidden*2]
+        # unet_input = combined_features.view(batch_size, self.dim_hidden, 1, 2)  # 重塑为图像形式
+        # # 继续UNet处理
+        # down1 = self.down1(unet_input)
+        # down2 = self.down2(down1)
+        # bridge = self.bridge(down2)
+        # up1 = self.up1(bridge)
+        # up2 = self.up2(up1)
+        # inter_map = self.final(up2)
+        # # 保持输出部分不变
+        # seqlevel_out = self.seqlevel_outlyer(inter_map)
 
-        # 调整 cdr3_emb 的维度
-        cdr3_emb = cdr3_emb.unsqueeze(1)
-        cdr3_emb = cdr3_emb.transpose(1, 2)
-
-        # 调整 epi_emb 的维度
-        epi_emb = epi_emb.unsqueeze(1)
-        epi_emb = epi_emb.transpose(1, 2)
-
-        # 直接使用原始嵌入，不应用旋转位置编码
-        cdr3_emb_RoPE = cdr3_emb
-        epi_emb_RoPE = epi_emb
-
-        ## sequence features
-        cdr3_feat = self.seq_cdr3(cdr3_emb_RoPE)  # batch_size, dim_hidden, seq_len
-        epi_feat = self.seq_epi(epi_emb_RoPE)
-
-        len_cdr3 = cdr3_feat.shape[2]
-        len_epi = epi_feat.shape[2]
-
-        ## get init inter map
-        cdr3_feat_mat = cdr3_feat.unsqueeze(3).repeat([1, 1, 1, len_epi])
-        epi_feat_mat = epi_feat.unsqueeze(2).repeat([1, 1, len_cdr3, 1])
-
-        inter_map = cdr3_feat_mat * epi_feat_mat
-
-        ## inter layers features
-        for layer in self.inter_layers:
-            inter_map = layer(inter_map)
-
-        ## output layers
-        seqlevel_out = self.seqlevel_outlyer(inter_map)
+        # transformer
+        combined_features = torch.stack([cdr3_feat, attended_features], dim=1)  # [batch_size, 2, dim_hidden]
+        # transformer编码器处理
+        transformer_out = self.transformer_encoder(combined_features)  # [batch_size, 2, dim_hidden]
+        # 池化 可以使用平均池化或仅取首token
+        pooled_features = transformer_out.mean(dim=1)  # [batch_size, dim_hidden]
+        # 分类输出（输出 logits，使用 BCEWithLogitsLoss）
+        logits = self.classifier(pooled_features)  # [batch_size, 1]
+        # 若想输出概率，则可以加上 sigmoid：probs = torch.sigmoid(logits)
 
         return {
-            'seqlevel_out': seqlevel_out,
-            'inter_map': torch.sigmoid(inter_map),
+            # 'seqlevel_out': seqlevel_out, # unet
+            'seqlevel_out': logits, # transformer
+            # 'inter_map': inter_map, # 暂时注释交互图输出
         }
+
+
+'''
+训练&验证
+'''
 
 # 添加项目根目录到系统路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -236,7 +298,6 @@ print(f"批次大小: {TRAIN_CONFIG['batch_size']}")
 print(f"总训练轮数: {TRAIN_CONFIG['num_epochs']}")
 
 num_epochs = TRAIN_CONFIG["num_epochs"]
-# 训练过程
 for epoch in range(num_epochs):
     epoch_start_time = time.time()
     model.train()
@@ -254,19 +315,34 @@ for epoch in range(num_epochs):
         # 确保形状匹配
         if seqlevel_out.shape == torch.Size([len(labels), 1]):
             seqlevel_out = seqlevel_out.view(-1)
+
+        # 输出均值和标准差
+        mean_val = seqlevel_out.mean().item()
+        std_val = seqlevel_out.std().item()
+        # 调试
+        print(f"\nseqlevel_out 均值: {mean_val:.4f}, 标准差: {std_val:.4f}")
         
         # 计算损失
         loss = criterion(seqlevel_out, labels)
         running_loss += loss.item()
         
-        # 直接使用模型输出的连续概率作为预测分数
-        total_preds.extend(seqlevel_out.cpu().detach().numpy())
+        # 计算预测值
+        # preds = seqlevel_out > 0.5
+        # total_preds.extend(preds.cpu().numpy())
+        total_preds.extend(seqlevel_out.detach().cpu().numpy())
         total_labels.extend(labels.cpu().numpy())
         
         # 反向传播
         optimizer.zero_grad()
         loss.backward()
         
+        # 调试 输出每个参数的梯度均值和标准差（仅打印非 None 的梯度）
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                grad_mean = param.grad.mean().item()
+                grad_std = param.grad.std().item()
+                print(f"Layer: {name} | grad mean: {grad_mean:.6f} | grad std: {grad_std:.6f}")
+
         # 梯度裁剪
         if TRAIN_CONFIG["grad_clip"]["enabled"]:
             torch.nn.utils.clip_grad_norm_(
@@ -300,8 +376,10 @@ for epoch in range(num_epochs):
             loss = criterion(seqlevel_out, labels)
             val_loss += loss.item()
             
-            # 直接使用连续概率作为预测分数
-            total_preds.extend(seqlevel_out.cpu().detach().numpy())
+            # 计算预测值
+            # preds = seqlevel_out > 0.5
+            # total_preds.extend(preds.cpu().numpy())
+            total_preds.extend(seqlevel_out.detach().cpu().numpy())
             total_labels.extend(labels.cpu().numpy())
 
     avg_val_loss = val_loss / len(val_loader)
@@ -342,3 +420,16 @@ for epoch in range(num_epochs):
         print(f"早停触发！验证AUC已连续 {early_stopping_patience} 轮未提升。")
         print(f"最佳验证AUC: {best_val_auc:.4f}，出现在第 {best_epoch} 轮。")
         break
+
+# 训练结束
+total_time = time.time() - start_time
+print(f"\n=== 训练完成 ===")
+print(f"总训练时间: {total_time:.2f}秒")
+print(f"最佳验证AUC: {best_val_auc:.4f}，出现在第 {best_epoch} 轮。")
+
+# 加载最佳模型
+model.load_state_dict(torch.load(os.path.join(MODEL_DIR, "best_model.pth")))
+
+# 保存最终模型
+torch.save(model.state_dict(), DEFAULT_MODEL_PATH)
+print(f"最终模型已保存到: {DEFAULT_MODEL_PATH}")
