@@ -8,7 +8,8 @@ import torch
 
 # 项目根目录 - 使用绝对路径确保准确性
 # ROOT_DIR = "C:/Users/21636/Desktop/ImmunoBind"
-ROOT_DIR = "D:/大学/大创/ImmunoBind"
+ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
+# ROOT_DIR = "D:/大学/大创/ImmunoBind"
 
 # 数据相关路径
 DATA_DIR = os.path.join(ROOT_DIR, "data")
@@ -34,14 +35,14 @@ TEIM_CONFIG = {
     "dim_seqlevel": 128,      # 序列级特征维度，增加到128
     "dim_emb_cdr3": 768,      # CDR3嵌入维度
     "dim_emb_epi": 1024,      # Epitope嵌入维度
-    "dropout_rate": 0.2,      # 降低Dropout比率，因为可能过度正则化
+    "dropout_rate": 0.1,      # 降低Dropout比率，因为可能过度正则化
 }
 
 # 训练参数
 TRAIN_CONFIG = {
-    "batch_size": 512,        # 批次大小
-    "num_epochs": 25,         # 训练轮数
-    "learning_rate": 2e-3,    # 学习率
+    "batch_size": 256,        # 批次大小
+    "num_epochs": 10,         # 训练轮数
+    "learning_rate": 1e-4,    # 学习率
     "weight_decay": 5e-5,     # 权重衰减
     "test_size": 0.2,         # 测试集比例
     "random_seed": 42,        # 随机种子
@@ -57,7 +58,7 @@ TRAIN_CONFIG = {
     # 梯度裁剪
     "grad_clip": {
         "enabled": True,
-        "max_norm": 5.0,      # 增加梯度裁剪阈值
+        "max_norm": 1.0,      # 增加梯度裁剪阈值
     },
 }
 
