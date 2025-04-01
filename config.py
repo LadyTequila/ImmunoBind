@@ -41,7 +41,7 @@ TEIM_CONFIG = {
 # 训练参数
 TRAIN_CONFIG = {
     "batch_size": 64,         # 减小批次大小以提高稳定性
-    "num_epochs": 30,         # 增加训练轮数
+    "num_epochs": 50,         # 增加训练轮数
     "learning_rate": 5e-5,    # 调整学习率
     "weight_decay": 5e-4,     # 增加权重衰减以增强正则化
     "test_size": 0.2,         # 测试集比例
