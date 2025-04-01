@@ -117,14 +117,14 @@ class TEIM(nn.Module):
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer, 
-            num_layers=4
+            num_layers=2
         )
 
         # 分类层
         self.classifier = nn.Sequential(
             nn.Dropout(self.dropout_rate),
-            nn.Linear(self.dim_hidden, 1),
-            nn.Sigmoid()
+            nn.Linear(self.dim_hidden, 1)
+            # nn.Sigmoid()
         )
 
     def forward(self, cdr3_sequences, epitope_sequences):
@@ -259,8 +259,8 @@ val_loader = DataLoader(val_data, batch_size=TRAIN_CONFIG["batch_size"], shuffle
 print("初始化模型...")
 model = TEIM()
 model.to(device)
-criterion = nn.BCELoss()
-# criterion = nn.BCEWithLogitsLoss()
+# criterion = nn.BCELoss()
+criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(
     model.parameters(), 
     lr=TRAIN_CONFIG["learning_rate"], 
@@ -308,49 +308,52 @@ for epoch in range(num_epochs):
         cdr3_seqs, epitope_seqs, labels = batch
         labels = labels.to(device)
         
-        # 前向传播
-        outputs = model(cdr3_seqs, epitope_seqs)
-        seqlevel_out = outputs['seqlevel_out']
-        
-        # 确保形状匹配
-        if seqlevel_out.shape == torch.Size([len(labels), 1]):
-            seqlevel_out = seqlevel_out.view(-1)
+        with torch.autograd.detect_anomaly(): # 调试 包裹前向 后向 梯度裁剪
+            # 前向传播
+            outputs = model(cdr3_seqs, epitope_seqs)
+            seqlevel_out = outputs['seqlevel_out']
+            
+            # 确保形状匹配
+            if seqlevel_out.shape == torch.Size([len(labels), 1]):
+                seqlevel_out = seqlevel_out.view(-1)
 
-        # 输出均值和标准差
-        mean_val = seqlevel_out.mean().item()
-        std_val = seqlevel_out.std().item()
-        # 调试
-        print(f"\nseqlevel_out 均值: {mean_val:.4f}, 标准差: {std_val:.4f}")
-        
-        # 计算损失
-        loss = criterion(seqlevel_out, labels)
-        running_loss += loss.item()
-        
-        # 计算预测值
-        # preds = seqlevel_out > 0.5
-        # total_preds.extend(preds.cpu().numpy())
-        total_preds.extend(seqlevel_out.detach().cpu().numpy())
-        total_labels.extend(labels.cpu().numpy())
-        
-        # 反向传播
-        optimizer.zero_grad()
-        loss.backward()
-        
-        # 调试 输出每个参数的梯度均值和标准差（仅打印非 None 的梯度）
-        for name, param in model.named_parameters():
-            if param.grad is not None:
-                grad_mean = param.grad.mean().item()
-                grad_std = param.grad.std().item()
-                print(f"Layer: {name} | grad mean: {grad_mean:.6f} | grad std: {grad_std:.6f}")
+            # 调试 输出均值和标准差
+            # mean_val = seqlevel_out.mean().item()
+            # std_val = seqlevel_out.std().item()
+            # print(f"\nseqlevel_out 均值: {mean_val:.4f}, 标准差: {std_val:.4f}")
+            
+            # 计算损失
+            loss = criterion(seqlevel_out, labels)
+            running_loss += loss.item()
+            
+            # 计算预测值
+            # preds = seqlevel_out > 0.5
+            # total_preds.extend(preds.cpu().numpy())
+            total_preds.extend(seqlevel_out.detach().cpu().numpy())
+            total_labels.extend(labels.cpu().numpy())
+            
+            # 反向传播前清空梯度
+            optimizer.zero_grad()
+            # loss.backward()
+            # 调试 使用detect_anomaly包裹反向传播过程
+            # with torch.autograd.detect_anomaly():
+            #     loss.backward()
+            
+            # 调试 输出每个参数的梯度均值和标准差（仅打印非 None 的梯度）
+            # for name, param in model.named_parameters():
+            #     if param.grad is not None:
+            #         grad_mean = param.grad.mean().item()
+            #         grad_std = param.grad.std().item()
+            #         print(f"Layer: {name} | grad mean: {grad_mean:.6f} | grad std: {grad_std:.6f}")
 
-        # 梯度裁剪
-        if TRAIN_CONFIG["grad_clip"]["enabled"]:
-            torch.nn.utils.clip_grad_norm_(
-                model.parameters(), 
-                TRAIN_CONFIG["grad_clip"]["max_norm"]
-            )
-        
-        optimizer.step()
+            # 梯度裁剪
+            if TRAIN_CONFIG["grad_clip"]["enabled"]:
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), 
+                    TRAIN_CONFIG["grad_clip"]["max_norm"]
+                )
+            
+            optimizer.step()
 
     avg_train_loss = running_loss / len(train_loader)
     train_auc = roc_auc_score(total_labels, total_preds)
