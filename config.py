@@ -42,7 +42,7 @@ TEIM_CONFIG = {
 TRAIN_CONFIG = {
     "batch_size": 256,        # 批次大小
     "num_epochs": 10,         # 训练轮数
-    "learning_rate": 1e-4,    # 学习率
+    "learning_rate": 1e-5,    # 学习率
     "weight_decay": 5e-5,     # 权重衰减
     "test_size": 0.2,         # 测试集比例
     "random_seed": 42,        # 随机种子
@@ -58,7 +58,7 @@ TRAIN_CONFIG = {
     # 梯度裁剪
     "grad_clip": {
         "enabled": True,
-        "max_norm": 1.0,      # 增加梯度裁剪阈值
+        "max_norm": 2.0,      # 增加梯度裁剪阈值
     },
 }
 
