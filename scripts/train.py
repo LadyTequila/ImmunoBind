@@ -1,5 +1,3 @@
-import os
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -9,6 +7,8 @@ from tqdm import tqdm
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 from model import TEIM
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import sys
 import time
 import datetime
@@ -62,9 +62,8 @@ val_loader = DataLoader(val_data, batch_size=TRAIN_CONFIG["batch_size"], shuffle
 print("初始化模型...")
 model = TEIM()
 model.to(device)
-# criterion = nn.BCELoss()
-criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.AdamW(
+criterion = nn.BCELoss()
+optimizer = optim.Adam(
     model.parameters(), 
     lr=TRAIN_CONFIG["learning_rate"], 
     weight_decay=TRAIN_CONFIG["weight_decay"]
