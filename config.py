@@ -30,36 +30,40 @@ PROT_MODEL_NAME = "Rostlab/prot_bert_bfd"
 
 # TEIM模型参数
 TEIM_CONFIG = {
-    "dim_hidden": 256,        # 隐藏层维度，增加到256以提升模型容量
-    "layers_inter": 4,        # 交互层数量，增加到4层以加强特征提取
-    "dim_seqlevel": 128,      # 序列级特征维度，增加到128
+    "dim_hidden": 256,        # 隐藏层维度
+    "layers_inter": 4,        # 交互层数量
+    "dim_seqlevel": 128,      # 序列级特征维度
     "dim_emb_cdr3": 768,      # CDR3嵌入维度
     "dim_emb_epi": 1024,      # Epitope嵌入维度
-    "dropout_rate": 0.1,      # 降低Dropout比率，因为可能过度正则化
+    "dropout_rate": 0.3,      # 增加Dropout比率以增强正则化
 }
 
 # 训练参数
 TRAIN_CONFIG = {
-    "batch_size": 256,        # 批次大小
-    "num_epochs": 10,         # 训练轮数
-    "learning_rate": 1e-5,    # 学习率
-    "weight_decay": 5e-5,     # 权重衰减
+    "batch_size": 64,         # 减小批次大小以提高稳定性
+    "num_epochs": 30,         # 增加训练轮数
+    "learning_rate": 5e-5,    # 调整学习率
+    "weight_decay": 5e-4,     # 增加权重衰减以增强正则化
     "test_size": 0.2,         # 测试集比例
     "random_seed": 42,        # 随机种子
-    "early_stopping": 10,     # 增加早停耐心值
+    "early_stopping": 15,     # 增加早停耐心值
     
     # 学习率调度器参数
     "lr_scheduler": {
-        "type": "cosine",     # 使用余弦退火调度器
-        "T_max": 25,          # 周期设为总轮数
-        "eta_min": 1e-6,      # 最小学习率
+        "type": "cosine_warmup",  # 使用带预热的余弦退火调度器
+        "warmup_epochs": 3,       # 预热轮数
+        "T_max": 27,              # 总轮数减去预热轮数
+        "eta_min": 1e-7,          # 最小学习率
     },
     
     # 梯度裁剪
     "grad_clip": {
         "enabled": True,
-        "max_norm": 2.0,      # 增加梯度裁剪阈值
+        "max_norm": 0.5,      # 减小梯度裁剪阈值以增强稳定性
     },
+    
+    # 标签平滑
+    "label_smoothing": 0.1,   # 添加标签平滑
 }
 
 # 设备配置
