@@ -9,7 +9,6 @@ import torch
 # 项目根目录 - 使用绝对路径确保准确性
 # ROOT_DIR = "C:/Users/21636/Desktop/ImmunoBind"
 ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
-# ROOT_DIR = "D:/大学/大创/ImmunoBind"
 
 # 数据相关路径
 DATA_DIR = os.path.join(ROOT_DIR, "data")
@@ -42,11 +41,11 @@ TEIM_CONFIG = {
 TRAIN_CONFIG = {
     "batch_size": 64,         # 减小批次大小以提高稳定性
     "num_epochs": 50,         # 增加训练轮数
-    "learning_rate": 5e-5,    # 调整学习率
+    "learning_rate": 1e-4,    # 调整学习率
     "weight_decay": 5e-4,     # 增加权重衰减以增强正则化
     "test_size": 0.2,         # 测试集比例
     "random_seed": 42,        # 随机种子
-    "early_stopping": 15,     # 增加早停耐心值
+    "early_stopping": 50,     # 增加早停耐心值
     
     # 学习率调度器参数
     "lr_scheduler": {
