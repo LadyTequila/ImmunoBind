@@ -1,3 +1,5 @@
+## 训练
+请直接运行merge.py
 ## data\processed\bindingdata_neg_ratio_1.tsv文件的生成过程
 ## 原始文件
 data\raw\SearchTable-2024-12-15 09_08_53.829.tsv
