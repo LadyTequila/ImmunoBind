@@ -6,7 +6,7 @@ ImmunoBind项目的配置文件
 import os
 import torch
 
-# 项目根目录 - 使用绝对路径确保准确性
+# 项目根目录
 # ROOT_DIR = "C:/Users/21636/Desktop/ImmunoBind"
 ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
 
