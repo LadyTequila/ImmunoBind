@@ -2,13 +2,13 @@
 ImmunoBind项目的配置文件
 包含数据路径、模型参数和训练参数
 """
-
 import os
 import torch
 
 # 项目根目录
 # ROOT_DIR = "C:/Users/21636/Desktop/ImmunoBind"
-ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
+# ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 数据相关路径
 DATA_DIR = os.path.join(ROOT_DIR, "data")
