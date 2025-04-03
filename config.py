@@ -9,6 +9,7 @@ import torch
 # ROOT_DIR = "C:/Users/21636/Desktop/ImmunoBind"
 # ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+# print(ROOT_DIR)
 
 # 数据相关路径
 DATA_DIR = os.path.join(ROOT_DIR, "data")
@@ -45,7 +46,7 @@ TRAIN_CONFIG = {
     "weight_decay": 5e-4,     # 增加权重衰减以增强正则化
     "test_size": 0.2,         # 测试集比例
     "random_seed": 42,        # 随机种子
-    "early_stopping": 50,     # 增加早停耐心值
+    "early_stopping": 10,     # 增加早停耐心值
     
     # 学习率调度器参数
     "lr_scheduler": {
