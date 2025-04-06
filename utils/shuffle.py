@@ -49,7 +49,7 @@ def save_to_new_file(features, labels, output_file_path, feature_columns, label_
 file_path = '../data/raw/raw.tsv'
 feature_columns = ['CDR3', 'Epitope']
 label_column = 'label'
-output_file_path = 'data/processed/bindingdata.tsv'
+output_file_path = '../data/raw/process.tsv'
 negative_ratio = 50 # 负样本数量是正样本数量的倍数
 
 features, labels = generate_negative_samples(file_path, feature_columns, label_column, negative_ratio)
