@@ -46,7 +46,7 @@ def save_to_new_file(features, labels, output_file_path, feature_columns, label_
     print(f"合并后的特征和标签已保存到 {new_file_name}")
 
 
-file_path = 'data/raw/blosum62_encoded.tsv'
+file_path = '../data/raw/raw.tsv'
 feature_columns = ['CDR3', 'Epitope']
 label_column = 'label'
 output_file_path = 'data/processed/bindingdata.tsv'
