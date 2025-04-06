@@ -16,8 +16,8 @@ DATA_DIR = os.path.join(ROOT_DIR, "data")
 PROCESSED_DATA_DIR = os.path.join(DATA_DIR, "processed")
 RAW_DATA_DIR = os.path.join(DATA_DIR, "raw")
 
-# 数据文件路径 - 使用绝对路径
-BINDING_DATA_PATH = os.path.join(PROCESSED_DATA_DIR, "bindingdata_neg_ratio_50.tsv")
+# 数据文件路径 - 使用相对路径
+BINDING_DATA_PATH = "data/raw/bindingdata_neg_ratio_50.tsv"
 
 # 模型保存路径
 MODEL_DIR = os.path.join(ROOT_DIR, "saved_models")
