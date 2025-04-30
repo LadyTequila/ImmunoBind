@@ -2,21 +2,22 @@
 ImmunoBind项目的配置文件
 包含数据路径、模型参数和训练参数
 """
-
 import os
 import torch
 
-# 项目根目录 - 使用绝对路径确保准确性
+# 项目根目录
 # ROOT_DIR = "C:/Users/21636/Desktop/ImmunoBind"
-ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
+# ROOT_DIR = "C:/Users/薛卜元/Desktop/ImmunoBind"
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+# print(ROOT_DIR)
 
 # 数据相关路径
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 PROCESSED_DATA_DIR = os.path.join(DATA_DIR, "processed")
 RAW_DATA_DIR = os.path.join(DATA_DIR, "raw")
 
-# 数据文件路径 - 使用绝对路径
-BINDING_DATA_PATH = os.path.join(PROCESSED_DATA_DIR, "bindingdata_neg_ratio_1.tsv")
+# 数据文件路径 - 使用相对路径
+BINDING_DATA_PATH = "../data/raw/process_neg_ratio_50.tsv"
 
 # 模型保存路径
 MODEL_DIR = os.path.join(ROOT_DIR, "saved_models")
@@ -45,7 +46,7 @@ TRAIN_CONFIG = {
     "weight_decay": 5e-4,     # 增加权重衰减以增强正则化
     "test_size": 0.2,         # 测试集比例
     "random_seed": 42,        # 随机种子
-    "early_stopping": 50,     # 增加早停耐心值
+    "early_stopping": 10,     # 增加早停耐心值
     
     # 学习率调度器参数
     "lr_scheduler": {
